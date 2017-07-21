@@ -1,5 +1,6 @@
 letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 import random
+import rc4
 random.seed()
 def alpha2ord(s):
     result = []
@@ -47,7 +48,12 @@ class Cipher(object):
     def __init__(self, key, iv):
         pass
     def get_next_char(self):
-        raise Exception('Not impmlemented')
+        c = 100
+        while c >= len(letters):
+            c = self.get_next_byte()
+
+    def get_next_byte(self):
+        raise Exception('Not implemented')
     def get_n_chars(self, n):
         result = ''
         for i in range(n):
@@ -60,6 +66,14 @@ class NullCipher(Cipher):
 
     def get_next_char(self):
         return 'A'
+
+class RC4Cipher(Cipher):
+    def __init__(self, key):
+        super(RC4Cipher, self).__init__(key, None)
+        self.c = rc4.RC4(key)
+    def get_next_char(self):
+        return self.c.next_byte
+    
 def filter(msg):
     result = ''
     for c in msg:
@@ -86,6 +100,9 @@ class Cryptor:
         cipher = NullCipher(self.key, iv)
         keystream = cipher.get_n_chars(len(ct))
         return ct2pt(ct, keystream)
+
+class RC4Cryptor(Cryptor):
+
 
 def groups(msg, groupsize = 5):
     i = 0
