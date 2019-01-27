@@ -1,5 +1,8 @@
-letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+import pyaes
 import random
+
+letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+bias_cutoff = 256 // len(letters) * len(letters) - 1
 random.seed()
 def alpha2ord(s):
     result = []
@@ -67,15 +70,32 @@ def filter(msg):
         if c in letters:
             result += c
     return result
+
+class AESCipher(Cipher):
+    def __init__(self, key, iv):
+        super(AESCipher, self).__init__(key, iv)
+        self.aes_ctx = pyaes.AESModeOfOperationCFB(key, iv)
+
+    def get_next_byte(self):
+        return self.aes_ctx.encrypt('\x00')
+
+    def get_next_char(self):
+        while True:
+            next_byte = self.get_next_byte()
+            if ord(next_byte) <= bias_cutoff:
+                return letters[ord(next_byte) % len(letters)]
+            
+                
+
 class Cryptor:
-    def __init__(self, key, iv_size = 10):
+    def __init__(self, key, iv_size = 16):
         self.key = key
         self.iv_size = iv_size
 
     def encrypt(self, pt):
         pt = filter(pt)
         iv = rand_iv(self.iv_size)
-        cipher = NullCipher(self.key, iv)
+        cipher = AESCipher(self.key, iv)
         keystream = cipher.get_n_chars(len(pt))
         return iv + pt2ct(pt, keystream)
 
@@ -83,7 +103,7 @@ class Cryptor:
         msg = filter(msg)
         iv = msg[:self.iv_size]
         ct = msg[self.iv_size:]
-        cipher = NullCipher(self.key, iv)
+        cipher = AESCipher(self.key, iv)
         keystream = cipher.get_n_chars(len(ct))
         return ct2pt(ct, keystream)
 
@@ -99,7 +119,8 @@ def groups(msg, groupsize = 5):
 def self_test(verbose = False):
     test_msg = 'The quick brown fox jumped over the lazy dog'
     expected_pt = 'THEQUICKBROWNFOXJUMPEDOVERTHELAZYDOG'
-    cryptor = Cryptor('TESTKEY')
+    #cryptor = Cryptor('TESTKEY')
+    cryptor = Cryptor('0123456789ABCDEF')
     ct = cryptor.encrypt(test_msg)
     pt = cryptor.decrypt(ct)
     if verbose:
